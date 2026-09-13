@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Editor Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1ede2;
+    --paper-2:#e8e2d0;
+    --ink:#17140f;
+    --grey:#6f6a5c;
+    --line:#c7c0aa;
+    --line-strong:#17140f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Space Mono', monospace;
+    min-height:100vh;
+    position:relative;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* subtle paper grain */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    pointer-events:none;
+    opacity:.5;
+    z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  }
+  .wrap{ position:relative; z-index:1; max-width:760px; margin:0 auto; padding:clamp(28px,6vw,48px) clamp(16px,4vw,20px) 120px;}
+  a{color:inherit;}
+
+  /* ---------- film strip bands ---------- */
+  .filmstrip{
+    height:20px; width:100%;
+    background-color:var(--ink);
+    background-image:radial-gradient(circle at 16px 10px, var(--paper) 6px, transparent 6.5px);
+    background-size:32px 20px;
+    background-repeat:repeat-x;
+    position:relative; z-index:2;
+  }
+
+  /* ---------- vignette ---------- */
+  body::after{
+    content:"";
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    box-shadow:inset 0 0 140px rgba(23,20,15,.18);
+  }
+
+  @keyframes flicker-in{
+    0%{opacity:0; filter:brightness(.3);}
+    8%{opacity:1; filter:brightness(1.6);}
+    11%{opacity:.35;}
+    16%{opacity:1; filter:brightness(1);}
+    100%{opacity:1; filter:brightness(1);}
+  }
+  #app{ animation:flicker-in .9s ease-out both; }
+  @media (prefers-reduced-motion: reduce){
+    #app{ animation:none; }
+  }
+
+  /* ---------- perforation divider ---------- */
+  .perf{
+    display:flex; align-items:center; gap:6px;
+    margin:52px 0;
+    color:var(--grey);
+  }
+  .perf .dash{flex:1; border-top:2px dashed var(--line);}
+  .perf span{font-size:11px; letter-spacing:.14em; white-space:nowrap;}
+
+  /* ---------- loading ---------- */
+  #loading{ text-align:center; padding:120px 20px; color:var(--grey);}
+  #loading .reel{
+    width:46px; height:46px; margin:0 auto 18px;
+    border-radius:50%;
+    border:3px solid var(--line);
+    border-top-color:var(--ink);
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #loading .label{ font-family:'Bebas Neue', sans-serif; font-size:28px; letter-spacing:.05em; }
+  #loading .dots::after{content:'...'; animation:blink 1.2s steps(4,end) infinite;}
+  @keyframes blink{0%,20%{content:'';}40%{content:'.';}60%{content:'..';}80%,100%{content:'...';}}
+  @media (prefers-reduced-motion: reduce){ #loading .reel{ animation:none; } }
+
+  #app{display:none;}
+
+  /* ---------- hero ---------- */
+  .hero{ text-align:center; }
+  .photo-frame{
+    width:150px; height:150px; margin:0 auto 22px;
+    position:relative;
+    border-radius:50%;
+    border:3px solid var(--ink);
+    outline:2px dashed var(--line-strong);
+    outline-offset:6px;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    background:var(--paper-2);
+    cursor:default;
+  }
+  .photo-frame img{width:100%; height:100%; object-fit:cover; display:block;}
+  .photo-frame .placeholder{font-size:11px; color:var(--grey); text-align:center; padding:0 10px; line-height:1.5;}
+  .photo-frame .photo-edit{
+    position:absolute; inset:0; background:rgba(23,20,15,.72); color:#f1ede2;
+    display:none; align-items:center; justify-content:center; font-size:10.5px;
+    letter-spacing:.06em; text-align:center; cursor:pointer; padding:8px;
+  }
+  body.editing .photo-frame{cursor:pointer;}
+  body.editing .photo-frame .photo-edit{display:flex;}
+
+  .name-wrap{ margin:4px 0 2px; }
+  h1.name{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(38px,9vw,56px);
+    line-height:.95;
+    letter-spacing:.02em;
+    margin:0;
+  }
+  input.name-input{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(34px,8vw,56px);
+    letter-spacing:.02em;
+    text-align:center;
+    width:100%;
+    background:transparent;
+    border:none; border-bottom:2px dashed var(--line-strong);
+    color:var(--ink);
+    padding:2px 4px;
+  }
+  .role-tag{
+    display:none;
+    font-size:11px; letter-spacing:.14em; color:var(--grey); margin-top:6px;
+  }
+
+  .bio{ max-width:420px; margin:18px auto 0; padding:0 12px; font-size:13.5px; line-height:1.9; color:var(--ink); }
+  .bio p{margin:0;}
+  .bio p:last-child::after{
+    content:'|'; margin-left:2px; animation:caret-blink 1s step-end infinite; color:var(--ink);
+  }
+  @keyframes caret-blink{ 50%{ opacity:0; } }
+  @media (prefers-reduced-motion: reduce){ .bio p:last-child::after{ animation:none; } }
+  textarea.bio-input{
+    width:100%; max-width:420px; margin:0 auto; display:block;
+    font-family:'Space Mono', monospace; font-size:13.5px; line-height:1.7;
+    background:transparent; border:1px dashed var(--line-strong); padding:10px;
+    color:var(--ink); resize:vertical;
+  }
+
+  .static{display:block;}
+  .edit-only{display:none;}
+  body.editing .static.hide-on-edit{display:none;}
+  body.editing .edit-only{display:block;}
+  body.editing .edit-only.inline{display:inline-block;}
+  body.editing .edit-only.flex{display:flex;}
+
+  /* ---------- section headings ---------- */
+  .section-title{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(26px,6vw,32px); letter-spacing:.02em;
+    text-align:center; margin:0 0 26px;
+  }
+
+  /* ---------- tabs ---------- */
+  .tabs{ display:flex; justify-content:center; gap:10px; margin-bottom:34px; flex-wrap:wrap;}
+  .tab-btn{
+    font-family:'Space Mono', monospace; font-weight:700;
+    font-size:12.5px; letter-spacing:.1em;
+    padding:11px 22px;
+    background:var(--paper);
+    border:2px solid var(--ink);
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+    cursor:pointer;
+    color:var(--ink);
+    box-shadow:4px 4px 0 var(--ink);
+    transition:background .15s, color .15s, transform .12s, box-shadow .12s;
+  }
+  .tab-btn.active{ background:var(--ink); color:var(--paper); box-shadow:4px 4px 0 var(--line); }
+  .tab-btn:not(.active):hover{ background:var(--paper-2); transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--ink); }
+  .tab-btn:active{ transform:translate(2px,2px) !important; box-shadow:1px 1px 0 var(--ink) !important; }
+
+  /* ---------- video grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(260px,1fr));
+    gap:26px;
+  }
+  #short-grid{ grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); }
+  .card{
+    background:var(--paper-2);
+    border:2px solid var(--ink);
+    padding:12px 12px 14px;
+    transform:rotate(var(--rot, 0deg));
+    box-shadow:6px 6px 0 var(--ink);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .card:nth-child(3n+1){--rot:-0.6deg;}
+  .card:nth-child(3n+2){--rot:0.5deg;}
+  .card:nth-child(3n){--rot:-0.3deg;}
+  .card:hover{ transform:rotate(0deg) translate(-3px,-3px); box-shadow:9px 9px 0 var(--ink); }
+  body.editing .card{transform:none;}
+  body.editing .card:hover{ transform:none; box-shadow:6px 6px 0 var(--ink); }
+  @media (prefers-reduced-motion: reduce){ .card, .card:hover{ transition:none; } }
+
+  .card-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .reel-no{ font-size:10.5px; letter-spacing:.1em; color:var(--grey);}
+  .card-del{
+    display:none;
+    border:none; background:none; color:var(--ink); cursor:pointer;
+    font-size:15px; line-height:1; padding:0 2px;
+  }
+  body.editing .card-del{display:inline-block;}
+
+  .screen{
+    position:relative; width:100%; padding-top:56.25%; /* 16:9 default (Long Form) */
+    background:#111; border:2px solid var(--ink);
+    overflow:hidden;
+  }
+  #short-grid .screen{ padding-top:177.78%; } /* 9:16 for Short Form */
+  .screen iframe, .screen video{
+    position:absolute; inset:0; width:100%; height:100%; border:0;
+  }
+  .screen::after{
+    content:'';
+    position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.05) 0px, rgba(255,255,255,.05) 1px, transparent 1px, transparent 3px);
+    mix-blend-mode:overlay;
+  }
+  .screen .empty-screen{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#8f8a7c; font-size:11px; letter-spacing:.08em; text-align:center; padding:10px;
+  }
+
+  .card-title{
+    margin-top:10px; font-size:13px; font-weight:700; text-align:center;
+  }
+  .card input.card-field{
+    width:100%; font-family:'Space Mono', monospace; font-size:12px;
+    padding:7px 8px; margin-top:8px; border:1px dashed var(--line-strong);
+    background:var(--paper); color:var(--ink);
+  }
+  .card .field-label{ font-size:9.5px; color:var(--grey); letter-spacing:.08em; margin-top:8px;}
+
+  .add-card{
+    border:2px dashed var(--line-strong);
+    display:none;
+    align-items:center; justify-content:center;
+    min-height:170px;
+    cursor:pointer;
+    font-size:12.5px; letter-spacing:.08em; color:var(--grey);
+    background:transparent;
+    transition:transform .15s ease, color .15s, border-color .15s, background .15s;
+  }
+  .add-card:hover{ color:var(--ink); border-color:var(--ink); background:var(--paper-2); transform:translate(-2px,-2px); }
+  body.editing .add-card{ display:flex; }
+
+  /* ---------- contact ---------- */
+  .contact-card{
+    border:2px solid var(--ink);
+    background:var(--paper-2);
+    padding:clamp(20px,5vw,26px) clamp(18px,5vw,24px);
+    max-width:420px; margin:0 auto;
+    box-shadow:6px 6px 0 var(--ink);
+  }
+  .contact-row{ display:flex; justify-content:space-between; align-items:center; padding:14px 0; }
+  .contact-row + .contact-row{ border-top:1px dashed var(--line);}
+  .contact-label{ font-size:10px; letter-spacing:.1em; color:var(--grey);}
+  .contact-value{ font-size:15px; font-weight:700; text-decoration:none; word-break:break-all;}
+  .contact-value:hover{ text-decoration:underline; }
+  .contact-hint{ font-size:9.5px; color:var(--grey); margin-top:2px;}
+  input.contact-input{
+    font-family:'Space Mono', monospace; font-size:13px; width:100%;
+    padding:8px; border:1px dashed var(--line-strong); background:var(--paper); color:var(--ink);
+  }
+
+  /* ---------- footer ---------- */
+  .footer{ text-align:center; font-size:10px; letter-spacing:.1em; color:var(--grey); margin-top:60px;}
+
+  /* ---------- edit toggle ---------- */
+  #edit-toggle{
+    position:fixed; right:18px; bottom:18px; z-index:20;
+    font-family:'Space Mono', monospace; font-weight:700; font-size:12px; letter-spacing:.08em;
+    padding:12px 20px;
+    background:var(--ink); color:var(--paper);
+    border:2px solid var(--ink); border-radius:30px;
+    cursor:pointer;
+    box-shadow:0 3px 0 rgba(0,0,0,.25);
+  }
+  #edit-toggle:active{ transform:translateY(2px); box-shadow:none; }
+  #save-status{
+    position:fixed; right:20px; bottom:64px; z-index:20;
+    font-size:10px; letter-spacing:.08em; color:var(--grey);
+    background:var(--paper); padding:3px 8px; border:1px solid var(--line);
+    opacity:0; transition:opacity .25s;
+  }
+  #save-status.show{ opacity:1; }
+
+  #file-input{ display:none; }
+
+  @media (max-width:480px){
+    .photo-frame{ width:118px; height:118px; }
+    .card{ box-shadow:4px 4px 0 var(--ink); }
+    .card:hover{ box-shadow:6px 6px 0 var(--ink); }
+    .contact-row{ flex-direction:column; align-items:flex-start; gap:6px; }
+  }
+</style>
+</head>
+<body>
+<div class="filmstrip"></div>
+
+<div id="loading">
+  <div class="reel"></div>
+  <div class="label"><span class="dots">Rewinding tape</span></div>
+</div>
+
+<div class="wrap" id="app">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="photo-frame" id="photo-frame">
+      <img id="photo-img" style="display:none;" alt="Profile photo">
+      <div class="placeholder" id="photo-placeholder">ADD<br>PHOTO</div>
+      <div class="photo-edit">TAP TO<br>CHANGE PHOTO</div>
+    </div>
+    <input type="file" id="file-input" accept="image/*">
+
+    <div class="name-wrap">
+      <h1 class="name static" id="name-display"></h1>
+      <input type="text" class="name-input edit-only" id="name-input" maxlength="40" placeholder="YOUR NAME">
+    </div>
+
+    <div class="bio">
+      <div class="static hide-on-edit" id="bio-display"></div>
+      <textarea class="bio-input edit-only" id="bio-input" rows="2" maxlength="140" placeholder="Two lines about the kind of videos you edit and who for."></textarea>
+    </div>
+  </div>
+
+  <div class="perf"><div class="dash"></div><span>◆ ◆ ◆</span><div class="dash"></div></div>
+
+  <!-- WORK -->
+  <div class="section-title">My Work</div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="short">Short Form</button>
+    <button class="tab-btn" data-tab="long">Long Form</button>
+  </div>
+
+  <div class="grid" id="short-grid"></div>
+  <div class="grid" id="long-grid" style="display:none;"></div>
+
+  <div class="perf"><div class="dash"></div><span>◆ ◆ ◆</span><div class="dash"></div></div>
+
+  <!-- CONTACT -->
+  <div class="section-title">Get In Touch</div>
+  <div class="contact-card">
+    <div class="contact-row">
+      <div style="flex:1;">
+        <div class="contact-label">PHONE — TAP FOR WHATSAPP</div>
+        <a href="#" class="contact-value static hide-on-edit" id="phone-display" target="_blank" rel="noopener"></a>
+        <input type="text" class="contact-input edit-only" id="phone-input" placeholder="+91 90000 00000">
+      </div>
+    </div>
+    <div class="contact-row">
+      <div style="flex:1;">
+        <div class="contact-label">EMAIL</div>
+        <a href="#" class="contact-value static hide-on-edit" id="email-display"></a>
+        <input type="text" class="contact-input edit-only" id="email-input" placeholder="you@email.com">
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    CRAFTED FRAME BY FRAME &nbsp;•&nbsp; <span id="year"></span><br>
+    <a href="#" id="export-link" style="text-decoration:underline; display:inline-block; margin-top:8px;">⬇ Download shareable copy</a>
+  </div>
+
+</div>
+
+<div class="filmstrip"></div>
+
+<button id="edit-toggle">✎ Edit</button>
+<div id="save-status">Saved</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Fallback so this page also works as a plain downloaded file (no Claude storage available).
+  // Saves happen in this browser's local storage instead.
+  if(!window.storage){
+    window.storage = {
+      get: function(key){
+        return new Promise(function(resolve){
+          var v = null;
+          try{ v = localStorage.getItem(key); }catch(e){}
+          resolve(v === null ? null : { key: key, value: v, shared: false });
+        });
+      },
+      set: function(key, value){
+        return new Promise(function(resolve){
+          try{ localStorage.setItem(key, value); resolve({ key: key, value: value, shared: false }); }
+          catch(e){ resolve(null); }
+        });
+      },
+      delete: function(key){
+        return new Promise(function(resolve){
+          try{ localStorage.removeItem(key); }catch(e){}
+          resolve({ key: key, deleted: true, shared: false });
+        });
+      },
+      list: function(){ return Promise.resolve({ keys: [], shared: false }); }
+    };
+  }
+
+  var STORAGE_KEY = 'portfolio-data';
+  /* DEFAULT_STATE_START */
+  var DEFAULT_STATE = {
+    name: "YOUR NAME",
+    photo: "",
+    bio: "Video editor crafting stories one frame at a time.\nWorking across brand films, reels and long-form content.",
+    phone: "",
+    email: "",
+    shortForm: [],
+    longForm: []
+  };
+  /* DEFAULT_STATE_END */
+
+  var state = null;
+  var editing = false;
+  var activeTab = 'short';
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function debounce(fn, wait){
+    var t;
+    return function(){
+      var args = arguments, ctx = this;
+      clearTimeout(t);
+      t = setTimeout(function(){ fn.apply(ctx, args); }, wait);
+    };
+  }
+
+  function showSaveStatus(text){
+    var el = $('save-status');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(showSaveStatus._t);
+    showSaveStatus._t = setTimeout(function(){ el.classList.remove('show'); }, 1400);
+  }
+
+  function saveState(){
+    showSaveStatus('Saving…');
+    window.storage.set(STORAGE_KEY, JSON.stringify(state), true).then(function(res){
+      if(!res){ showSaveStatus('Could not save'); return; }
+      showSaveStatus('Saved');
+    }).catch(function(err){
+      console.error('Storage save error:', err);
+      showSaveStatus('Could not save');
+    });
+  }
+
+  var saveStateDebounced = debounce(saveState, 500);
+
+  function loadState(){
+    return window.storage.get(STORAGE_KEY, true).then(function(res){
+      if(res && res.value){
+        try{ return JSON.parse(res.value); }catch(e){ return Object.assign({}, DEFAULT_STATE); }
+      }
+      return Object.assign({}, DEFAULT_STATE);
+    }).catch(function(){
+      return Object.assign({}, DEFAULT_STATE);
+    });
+  }
+
+  /* ---------------- embed detection ---------------- */
+  function buildEmbedNode(url){
+    if(!url || !url.trim()) return null;
+    url = url.trim();
+    var m;
+
+    // YouTube
+    m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
+    if(m){
+      var f = document.createElement('iframe');
+      f.src = 'https://www.youtube.com/embed/' + m[1];
+      f.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+      f.setAttribute('allowfullscreen', '');
+      f.loading = 'lazy';
+      return f;
+    }
+
+    // Google Drive
+    m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if(m){
+      var f2 = document.createElement('iframe');
+      f2.src = 'https://drive.google.com/file/d/' + m[1] + '/preview';
+      f2.setAttribute('allow', 'autoplay');
+      f2.loading = 'lazy';
+      return f2;
+    }
+
+    // Instagram
+    if(url.indexOf('instagram.com') !== -1){
+      var clean = url.split('?')[0].replace(/\/$/, '');
+      var f3 = document.createElement('iframe');
+      f3.src = clean + '/embed';
+      f3.loading = 'lazy';
+      return f3;
+    }
+
+    // Direct video file
+    if(/\.(mp4|webm|ogg)(\?.*)?$/i.test(url)){
+      var v = document.createElement('video');
+      v.src = url;
+      v.controls = true;
+      return v;
+    }
+
+    // Fallback: generic iframe
+    var f4 = document.createElement('iframe');
+    f4.src = url;
+    f4.loading = 'lazy';
+    return f4;
+  }
+
+  /* ---------------- rendering ---------------- */
+
+  function renderPhoto(){
+    var img = $('photo-img');
+    var ph = $('photo-placeholder');
+    if(state.photo){
+      img.src = state.photo;
+      img.style.display = 'block';
+      ph.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+      ph.style.display = 'block';
+    }
+  }
+
+  function renderBioDisplay(){
+    var lines = (state.bio || '').split('\n').filter(Boolean);
+    var el = $('bio-display');
+    el.innerHTML = '';
+    lines.forEach(function(line){
+      var p = document.createElement('p');
+      p.textContent = line;
+      el.appendChild(p);
+    });
+  }
+
+  // Plays the bio out like it's being typed, once, on first load.
+  function typewriterBio(){
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var lines = (state.bio || '').split('\n').filter(Boolean);
+    var el = $('bio-display');
+    el.innerHTML = '';
+    if(reduce || !lines.length){ renderBioDisplay(); return; }
+
+    var pEls = lines.map(function(){
+      var p = document.createElement('p');
+      el.appendChild(p);
+      return p;
+    });
+
+    var li = 0, ci = 0;
+    function step(){
+      if(li >= lines.length) return;
+      var line = lines[li];
+      pEls[li].textContent = line.slice(0, ci + 1);
+      ci++;
+      if(ci >= line.length){ li++; ci = 0; setTimeout(step, 220); }
+      else { setTimeout(step, 18 + Math.random() * 22); }
+    }
+    step();
+  }
+
+  function renderHeaderStatic(){
+    $('name-display').textContent = state.name || 'YOUR NAME';
+    $('name-input').value = state.name || '';
+    $('bio-input').value = state.bio || '';
+    renderBioDisplay();
+    renderPhoto();
+    // (typewriterBio() is called separately, once, right after the very first render)
+
+    var phoneDisplay = $('phone-display');
+    if(state.phone){
+      var digits = state.phone.replace(/[^0-9]/g, '');
+      phoneDisplay.href = 'https://wa.me/' + digits;
+      phoneDisplay.textContent = state.phone;
+    } else {
+      phoneDisplay.href = '#';
+      phoneDisplay.textContent = 'Add your number';
+    }
+    $('phone-input').value = state.phone || '';
+
+    var emailDisplay = $('email-display');
+    if(state.email){
+      emailDisplay.href = 'mailto:' + state.email;
+      emailDisplay.textContent = state.email;
+    } else {
+      emailDisplay.href = '#';
+      emailDisplay.textContent = 'Add your email';
+    }
+    $('email-input').value = state.email || '';
+  }
+
+  function makeCard(item, index, listKey){
+    var card = document.createElement('div');
+    card.className = 'card';
+
+    var top = document.createElement('div');
+    top.className = 'card-top';
+    var reelNo = document.createElement('span');
+    reelNo.className = 'reel-no';
+    reelNo.textContent = 'REEL ' + String(index + 1).padStart(2, '0');
+    var del = document.createElement('button');
+    del.className = 'card-del';
+    del.type = 'button';
+    del.title = 'Remove';
+    del.innerHTML = '✕';
+    del.addEventListener('click', function(){
+      state[listKey] = state[listKey].filter(function(v){ return v.id !== item.id; });
+      saveState();
+      renderGrids();
+    });
+    top.appendChild(reelNo);
+    top.appendChild(del);
+    card.appendChild(top);
+
+    var screen = document.createElement('div');
+    screen.className = 'screen';
+    var node = buildEmbedNode(item.url);
+    if(node){
+      screen.appendChild(node);
+    } else {
+      var empty = document.createElement('div');
+      empty.className = 'empty-screen';
+      empty.textContent = 'PASTE A VIDEO LINK BELOW';
+      screen.appendChild(empty);
+    }
+    card.appendChild(screen);
+
+    var titleStatic = document.createElement('div');
+    titleStatic.className = 'card-title static hide-on-edit';
+    titleStatic.textContent = item.title || 'Untitled';
+    card.appendChild(titleStatic);
+
+    var titleLabel = document.createElement('div');
+    titleLabel.className = 'field-label edit-only';
+    titleLabel.textContent = 'TITLE';
+    card.appendChild(titleLabel);
+
+    var titleInput = document.createElement('input');
+    titleInput.className = 'card-field edit-only';
+    titleInput.type = 'text';
+    titleInput.placeholder = 'Video title';
+    titleInput.value = item.title || '';
+    titleInput.addEventListener('input', function(){ item.title = titleInput.value; });
+    titleInput.addEventListener('blur', function(){
+      titleStatic.textContent = item.title || 'Untitled';
+      saveState();
+    });
+    card.appendChild(titleInput);
+
+    var urlLabel = document.createElement('div');
+    urlLabel.className = 'field-label edit-only';
+    urlLabel.textContent = 'VIDEO LINK (YOUTUBE / DRIVE / INSTAGRAM)';
+    card.appendChild(urlLabel);
+
+    var urlInput = document.createElement('input');
+    urlInput.className = 'card-field edit-only';
+    urlInput.type = 'text';
+    urlInput.placeholder = 'Paste link here';
+    urlInput.value = item.url || '';
+    urlInput.addEventListener('input', function(){ item.url = urlInput.value; });
+    urlInput.addEventListener('blur', function(){
+      saveState();
+      renderGrids();
+    });
+    card.appendChild(urlInput);
+
+    return card;
+  }
+
+  function renderGrid(listKey, gridId){
+    var grid = $(gridId);
+    grid.innerHTML = '';
+    (state[listKey] || []).forEach(function(item, i){
+      grid.appendChild(makeCard(item, i, listKey));
+    });
+    var addCard = document.createElement('button');
+    addCard.type = 'button';
+    addCard.className = 'add-card';
+    addCard.textContent = '+ ADD VIDEO';
+    addCard.addEventListener('click', function(){
+      state[listKey].push({ id: uid(), title: '', url: '' });
+      saveState();
+      renderGrids();
+    });
+    grid.appendChild(addCard);
+  }
+
+  function renderGrids(){
+    renderGrid('shortForm', 'short-grid');
+    renderGrid('longForm', 'long-grid');
+  }
+
+  /* ---------------- tabs ---------------- */
+  function setTab(tab){
+    activeTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    $('short-grid').style.display = tab === 'short' ? 'grid' : 'none';
+    $('long-grid').style.display = tab === 'long' ? 'grid' : 'none';
+  }
+
+  /* ---------------- edit mode ---------------- */
+  function setEditing(v){
+    editing = v;
+    document.body.classList.toggle('editing', editing);
+    $('edit-toggle').textContent = editing ? '✓ Done' : '✎ Edit';
+  }
+
+  /* ---------------- image upload ---------------- */
+  function resizeImage(file, maxDim){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var img = new Image();
+        img.onload = function(){
+          var w = img.width, h = img.height;
+          if(w > h && w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
+          var canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* ---------------- export a shareable, self-contained copy ---------------- */
+  function exportPortfolio(){
+    var wasEditing = editing;
+    if(wasEditing) setEditing(false);
+
+    setTimeout(function(){
+      var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      var marker = /\/\* DEFAULT_STATE_START \*\/[\s\S]*?\/\* DEFAULT_STATE_END \*\//;
+      var replacement = '/* DEFAULT_STATE_START */\n  var DEFAULT_STATE = ' + JSON.stringify(state) + ';\n  /* DEFAULT_STATE_END */';
+      if(marker.test(html)){
+        html = html.replace(marker, replacement);
+      }
+      try{
+        var blob = new Blob([html], { type: 'text/html' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'portfolio.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+        showSaveStatus('Downloaded!');
+      }catch(e){
+        console.error('Export error:', e);
+        showSaveStatus('Could not export');
+      }
+      if(wasEditing) setEditing(true);
+    }, 50);
+  }
+
+  /* ---------------- wire up events ---------------- */
+  function wireEvents(){
+    $('edit-toggle').addEventListener('click', function(){ setEditing(!editing); });
+
+    $('photo-frame').addEventListener('click', function(){
+      if(editing) $('file-input').click();
+    });
+    $('file-input').addEventListener('change', function(e){
+      var file = e.target.files[0];
+      if(!file) return;
+      resizeImage(file, 500).then(function(dataUrl){
+        state.photo = dataUrl;
+        renderPhoto();
+        saveState();
+      }).catch(function(err){
+        console.error('Image processing error:', err);
+        showSaveStatus('Could not load photo');
+      });
+    });
+
+    $('name-input').addEventListener('input', function(){ state.name = this.value; });
+    $('name-input').addEventListener('blur', function(){
+      $('name-display').textContent = state.name || 'YOUR NAME';
+      saveState();
+    });
+
+    $('bio-input').addEventListener('input', function(){ state.bio = this.value; });
+    $('bio-input').addEventListener('blur', function(){
+      renderBioDisplay();
+      saveState();
+    });
+
+    $('phone-input').addEventListener('input', function(){ state.phone = this.value; });
+    $('phone-input').addEventListener('blur', function(){
+      renderHeaderStatic();
+      saveState();
+    });
+
+    $('email-input').addEventListener('input', function(){ state.email = this.value; });
+    $('email-input').addEventListener('blur', function(){
+      renderHeaderStatic();
+      saveState();
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){ setTab(btn.dataset.tab); });
+    });
+
+    $('export-link').addEventListener('click', function(e){
+      e.preventDefault();
+      exportPortfolio();
+    });
+  }
+
+  /* ---------------- init ---------------- */
+  var safetyTimeout = new Promise(function(resolve){
+    setTimeout(function(){ resolve(Object.assign({}, DEFAULT_STATE)); }, 6000);
+  });
+
+  Promise.race([loadState(), safetyTimeout]).then(function(loaded){
+    state = loaded;
+    if(!Array.isArray(state.shortForm)) state.shortForm = [];
+    if(!Array.isArray(state.longForm)) state.longForm = [];
+
+    $('year').textContent = new Date().getFullYear();
+    wireEvents();
+    renderHeaderStatic();
+    renderGrids();
+    setTab('short');
+
+    $('loading').style.display = 'none';
+    $('app').style.display = 'block';
+
+    typewriterBio();
+  });
+
+})();
+</script>
+</body>
+</html>
